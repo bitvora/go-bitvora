@@ -8,15 +8,22 @@ import (
 	"net/http"
 )
 
+type Network string
+
+const (
+	Mainnet Network = "https://api.bitvora.com"
+	Signet  Network = "https://api.signet.bitvora.com"
+)
+
 type BitvoraClient struct {
 	BaseURL string
 	APIKey  string
 	Client  *http.Client
 }
 
-func NewBitvoraClient(baseURL, apiKey string) *BitvoraClient {
+func NewBitvoraClient(network Network, apiKey string) *BitvoraClient {
 	return &BitvoraClient{
-		BaseURL: baseURL,
+		BaseURL: string(network),
 		APIKey:  apiKey,
 		Client:  &http.Client{},
 	}
@@ -45,6 +52,38 @@ func (client *BitvoraClient) doPost(endpoint string, requestBody interface{}, re
 
 	req.Header.Set("Authorization", "Bearer "+client.APIKey)
 	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return &APIError{StatusCode: resp.StatusCode, Body: string(bodyBytes)}
+	}
+
+	if err := json.Unmarshal(bodyBytes, &responseBody); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return nil
+}
+
+func (client *BitvoraClient) doGet(endpoint string, responseBody interface{}) error {
+	url := fmt.Sprintf("%s/%s", client.BaseURL, endpoint)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create new request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+client.APIKey)
 
 	resp, err := client.Client.Do(req)
 	if err != nil {
@@ -100,24 +139,24 @@ func (client *BitvoraClient) CreateOnChainAddress(request CreateOnChainAddressRe
 
 func (client *BitvoraClient) GetBalance() (*GetBalanceResponse, error) {
 	var response GetBalanceResponse
-	err := client.doPost("v1/transactions/balance", nil, &response)
+	err := client.doGet("v1/transactions/balance", &response)
 	return &response, err
 }
 
 func (client *BitvoraClient) GetTransactions() (*GetTransactionsResponse, error) {
 	var response GetTransactionsResponse
-	err := client.doPost("v1/transactions", nil, &response)
+	err := client.doGet("v1/transactions", &response)
 	return &response, err
 }
 
 func (client *BitvoraClient) GetDeposit(id string) (*GetDepositResponse, error) {
 	var response GetDepositResponse
-	err := client.doPost(fmt.Sprintf("v1/transactions/deposits/%s", id), nil, &response)
+	err := client.doGet(fmt.Sprintf("v1/transactions/deposits/%s", id), &response)
 	return &response, err
 }
 
 func (client *BitvoraClient) GetWithdrawal(id string) (*WithdrawResponse, error) {
 	var response WithdrawResponse
-	err := client.doPost(fmt.Sprintf("v1/transactions/withdrawals/%s", id), nil, &response)
+	err := client.doGet(fmt.Sprintf("v1/transactions/withdrawals/%s", id), &response)
 	return &response, err
 }
