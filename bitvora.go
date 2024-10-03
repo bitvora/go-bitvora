@@ -15,12 +15,30 @@ const (
 	Signet  Network = "https://api.signet.bitvora.com"
 )
 
+type Currency string
+
+const (
+	AUD  Currency = "aud"
+	CAD  Currency = "cad"
+	CHF  Currency = "chf"
+	CNY  Currency = "cny"
+	EUR  Currency = "eur"
+	GBP  Currency = "gbp"
+	HKD  Currency = "hkd"
+	JPY  Currency = "jpy"
+	NZD  Currency = "nzd"
+	USD  Currency = "usd"
+	BTC  Currency = "btc"
+	SATS Currency = "sats"
+)
+
 type BitvoraClient struct {
 	BaseURL string
 	APIKey  string
 	Client  *http.Client
 }
 
+// Modified NewBitvoraClient to use Network Enum
 func NewBitvoraClient(network Network, apiKey string) *BitvoraClient {
 	return &BitvoraClient{
 		BaseURL: string(network),
@@ -107,33 +125,59 @@ func (client *BitvoraClient) doGet(endpoint string, responseBody interface{}) er
 	return nil
 }
 
-func (client *BitvoraClient) Withdraw(request WithdrawRequest) (*WithdrawResponse, error) {
+func (client *BitvoraClient) Withdraw(amount float64, currency Currency, destination string, metadata map[string]string) (*WithdrawResponse, error) {
+	requestBody := map[string]interface{}{
+		"amount":      amount,
+		"currency":    currency,
+		"destination": destination,
+		"metadata":    metadata,
+	}
 	var response WithdrawResponse
-	err := client.doPost("v1/bitcoin/withdraw/confirm", request, &response)
+	err := client.doPost("v1/bitcoin/withdraw/confirm", requestBody, &response)
 	return &response, err
 }
 
-func (client *BitvoraClient) EstimateWithdrawal(request EstimateWithdrawalRequest) (*EstimateWithdrawalResponse, error) {
+func (client *BitvoraClient) EstimateWithdrawal(amount float64, currency string, destination string) (*EstimateWithdrawalResponse, error) {
+	requestBody := map[string]interface{}{
+		"amount":      amount,
+		"currency":    currency,
+		"destination": destination,
+	}
 	var response EstimateWithdrawalResponse
-	err := client.doPost("v1/bitcoin/withdraw/estimate", request, &response)
+	err := client.doPost("v1/bitcoin/withdraw/estimate", requestBody, &response)
 	return &response, err
 }
 
-func (client *BitvoraClient) CreateLightningInvoice(request CreateLightningInvoiceRequest) (*CreateLightningInvoiceResponse, error) {
+func (client *BitvoraClient) CreateLightningInvoice(amount float64, currency string, description string, expirySeconds uint64, metadata map[string]string) (*CreateLightningInvoiceResponse, error) {
+	requestBody := map[string]interface{}{
+		"amount":         amount,
+		"currency":       currency,
+		"description":    description,
+		"expiry_seconds": expirySeconds,
+		"metadata":       metadata,
+	}
 	var response CreateLightningInvoiceResponse
-	err := client.doPost("v1/bitcoin/deposit/lightning-invoice", request, &response)
+	err := client.doPost("v1/bitcoin/deposit/lightning-invoice", requestBody, &response)
 	return &response, err
 }
 
-func (client *BitvoraClient) CreateLightningAddress(request CreateLightningAddressRequest) (*CreateLightningAddressResponse, error) {
+func (client *BitvoraClient) CreateLightningAddress(handle string, domain string, metadata map[string]string) (*CreateLightningAddressResponse, error) {
+	requestBody := map[string]interface{}{
+		"handle":   handle,
+		"domain":   domain,
+		"metadata": metadata,
+	}
 	var response CreateLightningAddressResponse
-	err := client.doPost("v1/bitcoin/deposit/lightning-address", request, &response)
+	err := client.doPost("v1/bitcoin/deposit/lightning-address", requestBody, &response)
 	return &response, err
 }
 
-func (client *BitvoraClient) CreateOnChainAddress(request CreateOnChainAddressRequest) (*CreateOnChainAddressResponse, error) {
+func (client *BitvoraClient) CreateOnChainAddress(metadata map[string]string) (*CreateOnChainAddressResponse, error) {
+	requestBody := map[string]interface{}{
+		"metadata": metadata,
+	}
 	var response CreateOnChainAddressResponse
-	err := client.doPost("v1/bitcoin/deposit/on-chain", request, &response)
+	err := client.doPost("v1/bitcoin/deposit/on-chain", requestBody, &response)
 	return &response, err
 }
 
