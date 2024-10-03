@@ -82,7 +82,7 @@ func (client *BitvoraClient) doPost(endpoint string, requestBody interface{}, re
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return &APIError{StatusCode: resp.StatusCode, Body: string(bodyBytes)}
 	}
 
